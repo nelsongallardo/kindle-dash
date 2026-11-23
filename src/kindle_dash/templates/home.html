@@ -1,26 +1,35 @@
 {% extends "base.html" %}
 {% block content %}
+{% set usable = lights|selectattr("available")|list %}
+{% set lit = usable|selectattr("on")|list|length %}
 <style>
   form { margin: 0; }
   button { cursor: pointer; font-family: Helvetica, Arial, sans-serif; font-weight: bold;
            border: 4px solid #000; background: #fff; color: #000; width: 100%; }
-  .all { border-spacing: 0; margin-bottom: 24px; }
+  button.on { background: #000; color: #fff; }
+  .section { border-bottom: 3px solid #000; padding-bottom: 6px; margin-bottom: 18px; }
+  .section h2 { font: bold 36px Helvetica, Arial, sans-serif; }
+  .section .count { text-align: right; font: 28px Helvetica, Arial, sans-serif; }
+  .all { margin-bottom: 24px; }
   .all form + form { padding-left: 24px; }
-  .all button { height: 110px; font-size: 32px; }
-  .all .on { background: #000; color: #fff; }
-  /* Two tiles per row as table cells: inline-block halves wrap in the app's old WebKit. */
+  .all button { height: 96px; font-size: 30px; }
   .pair { margin-bottom: 24px; }
   .pair > :first-child { padding-right: 12px; }
   .pair > :last-child { padding-left: 12px; }
-  .light { height: 220px; font-size: 34px; }
-  .light.on { background: #000; color: #fff; }
-  .light .state { display: block; font-size: 26px; font-weight: normal; margin-top: 12px; }
+  .light { height: 250px; text-align: center; }
+  .light img { display: block; margin: 0 auto 8px; }
+  .light .name { display: block; font-size: 34px; }
+  .light .state { display: block; font-size: 26px; font-weight: normal; margin-top: 6px; }
   .light[disabled] { border-style: dashed; }
 </style>
+<div class="section row">
+  <h2>Lights</h2>
+  {% if lights %}<div class="count">{{ lit }} of {{ usable|length }} on</div>{% endif %}
+</div>
 {% if lights %}
 <div class="all row">
-  <form method="post" action="/lights/all"><input type="hidden" name="state" value="on"><button class="on">All on</button></form>
-  <form method="post" action="/lights/all"><input type="hidden" name="state" value="off"><button>All off</button></form>
+  <form method="post" action="/lights/all"><input type="hidden" name="state" value="on"><button class="{{ 'on' if usable and lit == usable|length else '' }}">All on</button></form>
+  <form method="post" action="/lights/all"><input type="hidden" name="state" value="off"><button class="{{ 'on' if usable and lit == 0 else '' }}">All off</button></form>
 </div>
 {% endif %}
 {% for pair in lights|batch(2) %}
@@ -29,7 +38,8 @@
   <form method="post" action="/lights/toggle">
     <input type="hidden" name="entity_id" value="{{ light.entity_id }}">
     <button class="light {{ 'on' if light.on else '' }}" {{ 'disabled' if not light.available else '' }}>
-      {{ light.name }}
+      <img src="/static/icons/light-{{ 'on' if light.on else 'off' }}.svg" width="96" height="96" alt="">
+      <span class="name">{{ light.name }}</span>
       <span class="state">{% if not light.available %}Unavailable{% elif light.on %}On{% else %}Off{% endif %}</span>
     </button>
   </form>
