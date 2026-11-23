@@ -2,7 +2,7 @@
 
 An e-ink dashboard for a jailbroken Kindle Scribe. The Mac mini serves four screens on port 8090:
 
-- **Today**: current weather, a rain warning when rain is likely in the next 12 hours, the rest of today's events, tomorrow's first events, and how many lights are on.
+- **Today**: current weather, a rain warning when rain is likely in the next 12 hours, Tube and Elizabeth line disruptions from the [TfL status API](https://api.tfl.gov.uk) (no key; "Good service on all lines" when there are none), the rest of today's events, tomorrow's first events, and how many lights are on.
 - **Home**: one tile per Home Assistant `light.*` entity (tap to toggle), plus All on and All off.
 - **Calendar**: the next 7 days from one or more Google Calendar secret iCal links.
 - **Weather**: current conditions, the next 12 hours and the next 5 days from [Open-Meteo](https://open-meteo.com) (no API key), with an icon per condition. The location is Home Assistant's home location, rounded to 2 decimal places (about 1 km) before it is sent.

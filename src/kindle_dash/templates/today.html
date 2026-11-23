@@ -24,6 +24,8 @@
   .event .time { width: 150px; font-family: Helvetica, Arial, sans-serif; }
   .muted { font-style: italic; }
   .lights { font: 32px Helvetica, Arial, sans-serif; }
+  .tube { font: 28px Helvetica, Arial, sans-serif; padding: 4px 0; }
+  .tube .line { width: 300px; font-weight: bold; }
   .lights b { font-size: 40px; }
 </style>
 
@@ -44,6 +46,19 @@
   {% endif %}
   {% else %}
   <p class="muted">Weather unavailable</p>
+  {% endif %}
+</div>
+
+<div class="block">
+  <h2>Tube</h2>
+  {% if disruptions is none %}<p class="muted">Tube status unavailable</p>
+  {% else %}
+  {% for d in disruptions[:4] %}
+  <div class="tube row"><span class="line">{{ d.line }}</span><span>{{ d.status }}</span></div>
+  {% else %}
+  <p class="tube">Good service on all lines</p>
+  {% endfor %}
+  {% if disruptions|length > 4 %}<p class="tube muted">and {{ disruptions|length - 4 }} more lines disrupted</p>{% endif %}
   {% endif %}
 </div>
 

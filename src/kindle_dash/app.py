@@ -15,6 +15,7 @@ from fastapi.templating import Jinja2Templates
 from kindle_dash.calendar_feed import CalendarError, CalendarFeed, Day
 from kindle_dash.homeassistant import HomeAssistant, HomeAssistantError, Light
 from kindle_dash.settings import Settings
+from kindle_dash.tfl import Disruption, TflError, TubeStatus
 from kindle_dash.weather import Forecast, WeatherError, WeatherFeed
 
 log = logging.getLogger("kindle_dash")
@@ -40,6 +41,7 @@ calendar = CalendarFeed(
     settings.calendar_days,
 )
 weather = WeatherFeed(ha.approximate_location, settings.tz) if ha else None
+tube = TubeStatus()
 
 
 @asynccontextmanager
@@ -50,6 +52,7 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
     if weather:
         await weather.aclose()
     await calendar.aclose()
+    await tube.aclose()
 
 
 app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
@@ -172,10 +175,18 @@ async def _lights_or_none() -> list[Light] | None:
         return None
 
 
+async def _tube_or_none() -> list[Disruption] | None:
+    try:
+        return await tube.disruptions()
+    except TflError as e:
+        log.warning("today/tube: %s", e)
+        return None
+
+
 @app.get("/today", response_class=HTMLResponse)
 async def today_screen(request: Request) -> HTMLResponse:
-    forecast, days, lights = await asyncio.gather(
-        _forecast_or_none(), _days_or_none(), _lights_or_none()
+    forecast, days, lights, disruptions = await asyncio.gather(
+        _forecast_or_none(), _days_or_none(), _lights_or_none(), _tube_or_none()
     )
     now = datetime.now(settings.tz)
     later_today = [e for e in days[0].events if e.all_day or e.end > now] if days else None
@@ -188,6 +199,7 @@ async def today_screen(request: Request) -> HTMLResponse:
         later_today=later_today,
         tomorrow=tomorrow,
         lights=lights,
+        disruptions=disruptions,
         error=None,
     )
 
