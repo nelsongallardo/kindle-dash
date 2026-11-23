@@ -75,6 +75,17 @@ class HomeAssistant:
         lights = [_to_light(s) for s in states if s.entity_id.startswith("light.")]
         return sorted(lights, key=lambda light: light.name.lower())
 
+    async def anyone_home(self, entity_id: str) -> bool:
+        try:
+            state = _State.model_validate(await self._get(f"/api/states/{entity_id}")).state
+        except ValidationError as e:
+            raise HomeAssistantError(f"unexpected {entity_id} payload: {e}") from e
+        if state.isdigit():
+            return int(state) > 0
+        if state in ("unavailable", "unknown"):
+            raise HomeAssistantError(f"{entity_id} is {state}")
+        return state == "home"
+
     async def approximate_location(self) -> tuple[float, float]:
         try:
             config = _Config.model_validate(await self._get("/api/config"))

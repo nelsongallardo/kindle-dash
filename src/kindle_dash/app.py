@@ -8,7 +8,7 @@ from typing import Literal
 
 import uvicorn
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -287,6 +287,17 @@ async def talk_screen(request: Request) -> HTMLResponse:
         events=[e for e in days[0].events if e.all_day or e.end > now] if days else None,
         error=None,
     )
+
+
+@app.get("/presence", response_class=PlainTextResponse)
+async def presence() -> str:
+    if ha is None:
+        return "home"
+    try:
+        return "home" if await ha.anyone_home(settings.presence_entity) else "away"
+    except HomeAssistantError as e:
+        log.warning("presence: %s", e)
+        return "home"
 
 
 @app.get("/paper/weather.svg")

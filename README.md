@@ -13,7 +13,13 @@ Swipe left for the next screen and right for the previous one, in tab order (Hom
 
 `/` opens the first rotating screen. Today, Feed, Calendar and Weather rotate every `KINDLE_DASH_ROTATE_SECONDS`; each change reloads the data. Before `KINDLE_DASH_PAPER_UNTIL_HOUR` (10:00), once today's paper exists, its three pages lead the rotation and stay up for `KINDLE_DASH_PAPER_SECONDS` each. Home goes back to the rotation after `KINDLE_DASH_HOME_IDLE_SECONDS` without a tap.
 
-To save battery, the Kindle sleeps at night: at `SLEEP_AT` (default 23:00) it goes to its sleep screen and suspends, with a timed wake-up at `WAKE_AT` (default 07:00), when it reopens the dashboard. Woken by hand during the night, it shows the dashboard for 5 minutes and sleeps again. See `kindle/scripts/night.sh`.
+To save battery, the Kindle sleeps at night and while nobody is home (`kindle/scripts/night.sh`):
+
+- **Night:** at `SLEEP_AT` (default 23:00) it goes to its sleep screen and suspends, with a timed wake-up at `WAKE_AT` (default 07:00).
+- **Away:** while awake it asks the Mac's `/presence` every minute. The Mac answers `home` or `away` from Home Assistant's `KINDLE_DASH_PRESENCE_ENTITY` (default `zone.home`, the number of people home). On `away` the Kindle suspends and wakes every `AWAY_CHECK_SECONDS` (600) to ask again. Wi-Fi only runs when the Kindle is fully awake, so each check wakes it fully; the Mac answers about a minute after waking. It stays asleep while the answer is `away` and reopens the dashboard otherwise. If Home Assistant or the Mac can't be reached, the answer counts as home, so the dashboard stays on.
+- **Power button:** pressed while asleep, it shows the dashboard for 5 minutes and sleeps again.
+
+Turn off the Kindle's device passcode. Every timed wake-up otherwise stops at the lock screen.
 
 <img src="docs/weather.png" alt="Weather screen on the Kindle: current conditions, next hours and next days" width="465">
 
@@ -40,6 +46,7 @@ Settings come from `.env` (git-ignored, mode 600), all prefixed `KINDLE_DASH_`:
 | `KINDLE_DASH_WEATHER_PLACE` | unset | Place name shown on Weather, such as `London`. Display only: the forecast location comes from Home Assistant. |
 | `KINDLE_DASH_ROTATE_SECONDS` | `60` | Time on each rotating screen (Today, Feed, Calendar, Weather). Each change flashes the e-ink screen. |
 | `KINDLE_DASH_HOME_IDLE_SECONDS` | `120` | Time on Home before returning to the rotation |
+| `KINDLE_DASH_PRESENCE_ENTITY` | `zone.home` | Home Assistant entity that says whether anyone is home: a zone (count of people) or a `person.*` |
 | `KINDLE_DASH_PAPER_DIR` | `data/paper` | Where `kindle-dash-paper` writes the daily paper (git-ignored) |
 | `KINDLE_DASH_PAPER_UNTIL_HOUR` | `10` | The paper leads the rotation before this hour |
 | `KINDLE_DASH_PAPER_SECONDS` | `120` | Time on each paper page |
