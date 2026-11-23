@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -11,19 +12,20 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from kindle_dash.calendar_feed import CalendarError, CalendarFeed
-from kindle_dash.homeassistant import HomeAssistant, HomeAssistantError
+from kindle_dash.calendar_feed import CalendarError, CalendarFeed, Day
+from kindle_dash.homeassistant import HomeAssistant, HomeAssistantError, Light
 from kindle_dash.settings import Settings
-from kindle_dash.weather import WeatherError, WeatherFeed
+from kindle_dash.weather import Forecast, WeatherError, WeatherFeed
 
 log = logging.getLogger("kindle_dash")
-Screen = Literal["home", "calendar", "weather"]
+Screen = Literal["home", "today", "calendar", "weather"]
 SCREENS: list[tuple[Screen, str]] = [
     ("home", "Home"),
+    ("today", "Today"),
     ("calendar", "Calendar"),
     ("weather", "Weather"),
 ]
-ROTATION: list[Screen] = ["calendar", "weather"]
+ROTATION: list[Screen] = ["today", "calendar", "weather"]
 
 settings = Settings()
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
@@ -138,6 +140,56 @@ async def weather_screen(request: Request) -> HTMLResponse:
     except (WeatherError, HomeAssistantError) as e:
         log.warning("weather: %s", e)
         return render(request, "weather", forecast=None, error="Can't load the weather.")
+
+
+async def _forecast_or_none() -> Forecast | None:
+    if weather is None:
+        return None
+    try:
+        return await weather.forecast()
+    except (WeatherError, HomeAssistantError) as e:
+        log.warning("today/weather: %s", e)
+        return None
+
+
+async def _days_or_none() -> list[Day] | None:
+    if not calendar.configured:
+        return None
+    try:
+        return await calendar.days()
+    except CalendarError as e:
+        log.warning("today/calendar: %s", e)
+        return None
+
+
+async def _lights_or_none() -> list[Light] | None:
+    if ha is None:
+        return None
+    try:
+        return await ha.lights()
+    except HomeAssistantError as e:
+        log.warning("today/lights: %s", e)
+        return None
+
+
+@app.get("/today", response_class=HTMLResponse)
+async def today_screen(request: Request) -> HTMLResponse:
+    forecast, days, lights = await asyncio.gather(
+        _forecast_or_none(), _days_or_none(), _lights_or_none()
+    )
+    now = datetime.now(settings.tz)
+    later_today = [e for e in days[0].events if e.all_day or e.end > now] if days else None
+    tomorrow = days[1].events if days and len(days) > 1 else None
+    return render(
+        request,
+        "today",
+        forecast=forecast,
+        place=settings.weather_place,
+        later_today=later_today,
+        tomorrow=tomorrow,
+        lights=lights,
+        error=None,
+    )
 
 
 def main() -> None:

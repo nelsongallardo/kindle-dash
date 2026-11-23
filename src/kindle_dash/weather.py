@@ -9,6 +9,8 @@ import httpx
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 OPEN_METEO = "https://api.open-meteo.com/v1/forecast"
+RAIN_LIKELY_PERCENT = 50
+RAIN_LOOKAHEAD_HOURS = 12
 
 Icon = Literal[
     "clear", "night", "partly", "partly-night", "cloudy", "fog", "rain", "snow", "thunder"
@@ -100,6 +102,7 @@ class Forecast:
     today: DayForecast
     hours: list[Hour]
     days: list[DayForecast]
+    next_rain: Hour | None
 
 
 class _Current(BaseModel):
@@ -145,7 +148,7 @@ def to_forecast(raw: object, now: datetime, hour_step: int, hour_slots: int) -> 
         raise WeatherError(f"unexpected forecast payload: {e}") from e
     tz = now.tzinfo
     h = r.hourly
-    hours = [
+    upcoming = [
         Hour(
             time=t.replace(tzinfo=tz),
             temp=h.temperature_2m[i],
@@ -154,7 +157,10 @@ def to_forecast(raw: object, now: datetime, hour_step: int, hour_slots: int) -> 
         )
         for i, t in enumerate(h.time)
         if t.replace(tzinfo=tz) > now
-    ][::hour_step][:hour_slots]
+    ]
+    next_rain = next(
+        (x for x in upcoming[:RAIN_LOOKAHEAD_HOURS] if x.rain_chance >= RAIN_LIKELY_PERCENT), None
+    )
     d = r.daily
     days = [
         DayForecast(
@@ -179,8 +185,9 @@ def to_forecast(raw: object, now: datetime, hour_step: int, hour_slots: int) -> 
             wind_mph=c.wind_speed_10m,
         ),
         today=days[0],
-        hours=hours,
+        hours=upcoming[::hour_step][:hour_slots],
         days=days[1:],
+        next_rain=next_rain,
     )
 
 

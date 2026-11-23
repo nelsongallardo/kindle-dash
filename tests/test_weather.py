@@ -27,7 +27,7 @@ def payload() -> dict[str, object]:
             "time": [t.isoformat(timespec="minutes") for t in times],
             "temperature_2m": [float(t.hour) for t in times],
             "weather_code": codes,
-            "precipitation_probability": [None] * 48,
+            "precipitation_probability": [None] * 22 + [30, 60] + [None] * 24,
             "is_day": [1 if 8 <= t.hour < 16 else 0 for t in times],
         },
         "daily": {
@@ -59,6 +59,9 @@ def test_forecast_shows_upcoming_hours_with_night_icons_and_days_after_today() -
     assert f.hours[1].condition.icon == "partly-night", "partly cloudy at night"
     assert [d.date for d in f.days] == [date(2026, 11, 24)], "today is not repeated in days"
     assert f.days[0].condition.icon == "rain"
+    assert f.next_rain is not None and f.next_rain.time.strftime("%H:%M") == "23:00", (
+        "first upcoming hour at or above 50% rain"
+    )
 
 
 @respx.mock

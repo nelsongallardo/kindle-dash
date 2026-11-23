@@ -1,12 +1,15 @@
 # kindle-dash
 
-An e-ink dashboard for a jailbroken Kindle Scribe. The Mac mini serves three screens on port 8090:
+An e-ink dashboard for a jailbroken Kindle Scribe. The Mac mini serves four screens on port 8090:
 
+- **Today**: current weather, a rain warning when rain is likely in the next 12 hours, the rest of today's events, tomorrow's first events, and how many lights are on.
 - **Home**: one tile per Home Assistant `light.*` entity (tap to toggle), plus All on and All off.
 - **Calendar**: the next 7 days from one or more Google Calendar secret iCal links.
 - **Weather**: current conditions, the next 12 hours and the next 5 days from [Open-Meteo](https://open-meteo.com) (no API key), with an icon per condition. The location is Home Assistant's home location, rounded to 2 decimal places (about 1 km) before it is sent.
 
-`/` opens Calendar. Calendar and Weather swap every `KINDLE_DASH_ROTATE_SECONDS`; each swap reloads the data. Home goes back to Calendar after `KINDLE_DASH_HOME_IDLE_SECONDS` without a tap.
+`/` opens Today. Today, Calendar and Weather rotate every `KINDLE_DASH_ROTATE_SECONDS`; each change reloads the data. Home goes back to Today after `KINDLE_DASH_HOME_IDLE_SECONDS` without a tap.
+
+To save battery, the Kindle sleeps at night: at `SLEEP_AT` (default 23:00) it goes to its sleep screen and suspends, with a timed wake-up at `WAKE_AT` (default 07:00), when it reopens the dashboard. Woken by hand during the night, it shows the dashboard for 5 minutes and sleeps again. See `kindle/scripts/night.sh`.
 
 <img src="docs/weather.png" alt="Weather screen on the Kindle: current conditions, next hours and next days" width="465">
 
@@ -31,8 +34,8 @@ Settings come from `.env` (git-ignored, mode 600), all prefixed `KINDLE_DASH_`:
 | `KINDLE_DASH_CALENDAR_DAYS` | `7` | Days shown on Calendar |
 | `KINDLE_DASH_TIMEZONE` | `Europe/London` | Time zone for the clock and events |
 | `KINDLE_DASH_WEATHER_PLACE` | unset | Place name shown on Weather, such as `London`. Display only: the forecast location comes from Home Assistant. |
-| `KINDLE_DASH_ROTATE_SECONDS` | `60` | Time on Calendar or Weather before switching to the other. Each switch flashes the e-ink screen. |
-| `KINDLE_DASH_HOME_IDLE_SECONDS` | `120` | Time on Home before returning to Calendar |
+| `KINDLE_DASH_ROTATE_SECONDS` | `60` | Time on each rotating screen (Today, Calendar, Weather). Each change flashes the e-ink screen. |
+| `KINDLE_DASH_HOME_IDLE_SECONDS` | `120` | Time on Home before returning to Today |
 
 After changing code or `.env`, restart the service:
 
@@ -56,7 +59,7 @@ The files in `kindle/` and `deploy/` contain placeholders: `__MAC_HOST__` (the M
 MAC_HOST=192.168.1.10 deploy/install.sh
 ```
 
-`MAC_USER` defaults to the current account. The script does not create keys: the tunnel key (`/var/local/kindle-dash/tunnel_key`), its tunnel-only entry in the Mac's `~/.ssh/authorized_keys`, and the `kindle` entry in `~/.ssh/config` are set up once by hand.
+`MAC_USER` defaults to the current account. `SLEEP_AT` and `WAKE_AT` (24-hour `HH:MM`) set the night window. The script does not create keys: the tunnel key (`/var/local/kindle-dash/tunnel_key`), its tunnel-only entry in the Mac's `~/.ssh/authorized_keys`, and the `kindle` entry in `~/.ssh/config` are set up once by hand.
 
 | Repo file | Installed at | Purpose |
 |---|---|---|
@@ -66,6 +69,8 @@ MAC_HOST=192.168.1.10 deploy/install.sh
 | `kindle/scripts/tunnel.sh` | `/var/local/kindle-dash/tunnel.sh` | Local-only SSH server on `127.0.0.1:2022`, forwarded to the Mac's `localhost:2222`. |
 | `kindle/upstart/kindle-dash-open.conf` | `/etc/upstart/` | Runs `start.sh` after `home_wait` at boot. |
 | `kindle/upstart/kindle-dash-tunnel.conf` | `/etc/upstart/` | Runs `tunnel.sh` at boot. |
+| `kindle/scripts/night.sh` | `/var/local/kindle-dash/night.sh` | Night sleep and morning wake-up. Logs to `/var/local/kindle-dash/night.log`. |
+| `kindle/upstart/kindle-dash-night.conf` | `/etc/upstart/` | Runs `night.sh` at boot. |
 | `kindle/library/*.sh` | `/mnt/us/documents/` | Library items **Dashboard** and **Dashboard - allow sleep**. |
 
 The app is registered in `/var/local/appreg.db` with the same rows as the built-in `com.lab126.webview` app. A copy of the database from before registration is at `/var/local/kindle-dash/appreg.db.bak`.

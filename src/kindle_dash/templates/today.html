@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% macro deg(t) %}{{ t|round|int }}°{% endmacro %}
+{% macro event_row(e) %}
+<div class="event row">
+  <span class="time">{% if e.all_day %}All day{% else %}{{ e.start.strftime("%H:%M") }}{% endif %}</span>
+  <span>{{ e.title }}</span>
+</div>
+{% endmacro %}
+{% block content %}
+<style>
+  .sans { font-family: Helvetica, Arial, sans-serif; }
+  h2 { font: bold 30px Helvetica, Arial, sans-serif; border-bottom: 3px solid #000;
+       padding-bottom: 4px; margin: 0 0 10px; }
+  .block { margin-bottom: 26px; }
+  .wx .pic { width: 150px; }
+  .wx .temp { font: bold 88px/1 Helvetica, Arial, sans-serif; }
+  .wx .label { font-size: 36px; }
+  .wx .facts { font: 26px Helvetica, Arial, sans-serif; }
+  .wx .place { font: bold 24px Helvetica, Arial, sans-serif; text-transform: uppercase; letter-spacing: 2px; }
+  .rain { border: 4px solid #000; padding: 12px 18px; margin-top: 14px;
+          font: bold 30px Helvetica, Arial, sans-serif; }
+  .event { padding: 6px 0; }
+  .event > * { vertical-align: top; }
+  .event .time { width: 150px; font-family: Helvetica, Arial, sans-serif; }
+  .muted { font-style: italic; }
+  .lights { font: 32px Helvetica, Arial, sans-serif; }
+  .lights b { font-size: 40px; }
+</style>
+
+<div class="block">
+  {% if forecast %}
+  {% set f = forecast %}
+  <div class="wx row">
+    <div class="pic"><img src="/static/icons/{{ f.now.condition.icon }}.svg" width="130" height="130" alt="{{ f.now.condition.label }}"></div>
+    <div>
+      {% if place %}<div class="place">{{ place }}</div>{% endif %}
+      <div class="temp">{{ deg(f.now.temp) }}</div>
+      <div class="label">{{ f.now.condition.label }}</div>
+      <div class="facts">High {{ deg(f.today.high) }} · low {{ deg(f.today.low) }} · rain {{ f.today.rain_chance }}%</div>
+    </div>
+  </div>
+  {% if f.next_rain %}
+  <div class="rain">Rain likely from {{ f.next_rain.time.strftime("%H:%M") }} ({{ f.next_rain.rain_chance }}%)</div>
+  {% endif %}
+  {% else %}
+  <p class="muted">Weather unavailable</p>
+  {% endif %}
+</div>
+
+<div class="block">
+  <h2>Later today</h2>
+  {% if later_today is none %}<p class="muted">Calendar unavailable</p>
+  {% else %}
+  {% for e in later_today[:4] %}{{ event_row(e) }}{% else %}<p class="muted">Nothing else today</p>{% endfor %}
+  {% endif %}
+</div>
+
+{% if tomorrow is not none %}
+<div class="block">
+  <h2>Tomorrow</h2>
+  {% for e in tomorrow[:3] %}{{ event_row(e) }}{% else %}<p class="muted">Nothing scheduled</p>{% endfor %}
+</div>
+{% endif %}
+
+<div class="block">
+  <h2>Lights</h2>
+  {% if lights is none %}<p class="muted">Home Assistant unavailable</p>
+  {% else %}
+  {% set usable = lights|selectattr("available")|list %}
+  {% set lit = usable|selectattr("on")|list %}
+  <p class="lights"><b>{{ lit|length }} of {{ usable|length }}</b> on{% if lit %}: {{ lit|map(attribute="name")|join(", ") }}{% endif %}</p>
+  {% endif %}
+</div>
+{% endblock %}
