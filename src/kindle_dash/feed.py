@@ -17,7 +17,8 @@ from kindle_dash.settings import Settings
 
 log = logging.getLogger(__name__)
 TIMELINE_JS = Path(__file__).with_name("x_timeline.js")
-MAX_AGE = timedelta(hours=24)
+PICK_MAX_AGE = timedelta(hours=2)
+SHOW_MAX_AGE = timedelta(hours=12)
 MAX_BATCH = 60
 KEEP_ITEMS = 30
 KEEP_SEEN = 3000
@@ -219,7 +220,7 @@ def update(
     pick: Callable[[list[Tweet], list[str]], list[Any]],
 ) -> FeedState:
     seen = set(state.seen)
-    fresh = [t for t in tweets if t.id not in seen and now - t.posted_at <= MAX_AGE]
+    fresh = [t for t in tweets if t.id not in seen and now - t.posted_at <= PICK_MAX_AGE]
     fresh = sorted(fresh, key=lambda t: t.posted_at, reverse=True)[:MAX_BATCH]
     if not fresh:
         return state
@@ -261,7 +262,7 @@ def latest(state: FeedState, now: datetime, count: int) -> list[tuple[Item, str]
     shown: list[tuple[Item, str]] = []
     for item in state.items:
         age = now - item.posted_at
-        if age > MAX_AGE or len(shown) == count:
+        if age > SHOW_MAX_AGE or len(shown) == count:
             continue
         minutes = max(int(age.total_seconds() // 60), 0)
         shown.append((item, f"{minutes} min ago" if minutes < 60 else f"{minutes // 60} h ago"))

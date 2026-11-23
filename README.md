@@ -4,7 +4,7 @@ An e-ink dashboard for a jailbroken Kindle Scribe. The Mac mini serves these scr
 
 - **Paper**: *The Morning Scribe*, a three-page morning newspaper. Page 1 has the lead story, weather with a 24-hour temperature and rain chart, Tube status, and each holding's move at the last close. Page 2 has technology stories and the week ahead for markets. Page 3 has the topics people are discussing on X, each disrupted Tube line with its status, and the rest of today's events. Swipe left or right to turn pages, as in a Kindle book, or tap 1, 2 or 3 at the bottom. Swipes come from the Kindle's own `kindle.gestures.onswipe` API, because the app runtime sends no touch events to pages; `kindle/app/config.xml` must enable the `swipe` gesture. A Hermes agent writes the stories each morning (see [The Morning Scribe](#the-morning-scribe)).
 - **Today**: current weather, a rain warning when rain is likely in the next 12 hours, Tube and Elizabeth line disruptions from the [TfL status API](https://api.tfl.gov.uk) (no key; "Good service on all lines" when there are none), the rest of today's events, tomorrow's first events, and how many lights are on.
-- **Feed**: the three newest tweets worth reading from the X Following timeline, each with a headline and a one-sentence summary in large type, readable from across the room. A local model picks and summarises them (see [Feed](#feed)).
+- **Feed**: the three newest tweets worth reading from the X Following timeline (from the last 12 hours), each with a headline and a one-sentence summary in large type, readable from across the room. A local model picks and summarises them (see [Feed](#feed)).
 - **Home**: one tile per Home Assistant `light.*` entity (tap to toggle), plus All on and All off.
 - **Calendar**: the next 7 days from one or more Google Calendar secret iCal links.
 - **Weather**: current conditions, the next 12 hours and the next 5 days from [Open-Meteo](https://open-meteo.com) (no API key), with an icon per condition. The location is Home Assistant's home location, rounded to 2 decimal places (about 1 km) before it is sent.
@@ -74,9 +74,9 @@ If no paper exists for today, the Paper pages say so and the rotation skips them
 
 launchd `local.kindle-dash-feed` (`deploy/local.kindle-dash-feed.plist`) runs `kindle-dash-feed` every 15 minutes and logs to `logs/feed.log`. No cloud model is involved.
 
-1. `src/kindle_dash/x_timeline.js` runs through `hermes-browser run-code`. It opens its own tab on x.com/home, selects Following, scrolls, records X's `HomeLatestTimeline` JSON responses, and closes the tab. It only reads.
+1. `src/kindle_dash/x_timeline.js` runs through `hermes-browser run-code`. It opens its own tab on x.com/home, selects Following, sets its "Sort by" menu to Recent (X defaults to Popular, which surfaces tweets many hours old), reloads, scrolls, records X's `HomeLatestTimeline` JSON responses, and closes the tab. It only reads.
 2. `parse_timeline` turns that JSON into tweets: ads are dropped, retweets become the original tweet, thread replies and long posts are included, and `t.co` links become their display text.
-3. Only tweets from the last 24 hours that were not in an earlier run go to the local model (LM Studio, loaded on demand and unloaded after 5 idle minutes). It returns at most 5 picks with a headline, a one-sentence summary and an importance from 1 to 5. Picks below 4, over the length limits, or for a tweet not in the batch are dropped.
+3. Only tweets from the last 2 hours that were not in an earlier run go to the local model (LM Studio, loaded on demand and unloaded after 5 idle minutes). It returns at most 5 picks with a headline, a one-sentence summary and an importance from 1 to 5. Picks below 4, over the length limits, or for a tweet not in the batch are dropped.
 4. `data/feed/feed.json` keeps the last 30 picks, with the original tweet text, and the IDs of tweets already sent to the model. If the browser or model fails, nothing is saved and the next run sends the same tweets.
 
 Try it without saving: `uv run kindle-dash-feed --dry-run`.
