@@ -1,12 +1,12 @@
 #!/bin/sh
-# Usage: MAC_HOST=<Mac LAN address> [MAC_USER=<account>] [SLEEP_AT=23:00] [WAKE_AT=07:00] deploy/install.sh
+# Usage: MAC_HOST=<Mac LAN address> [MAC_USER=<account>] [SLEEP_AT=00:00] [WAKE_AT=07:00] deploy/install.sh
 # Fills the __PLACEHOLDERS__ in deploy/ and kindle/, installs the launchd service on this Mac,
 # and copies the Kindle files over `ssh kindle` (the jailbroken Kindle must already be reachable).
 set -eu
 
 : "${MAC_HOST:?set MAC_HOST to the Mac mini LAN address the Kindle connects to}"
 MAC_USER=${MAC_USER:-$(id -un)}
-SLEEP_AT=${SLEEP_AT:-23:00}
+SLEEP_AT=${SLEEP_AT:-00:00}
 WAKE_AT=${WAKE_AT:-07:00}
 PROJECT_DIR=$(cd "$(dirname "$0")/.." && pwd)
 OUT=$(mktemp -d)

@@ -15,7 +15,7 @@ Swipe left for the next screen and right for the previous one, in tab order (Hom
 
 To save battery, the Kindle sleeps at night and while nobody is home (`kindle/scripts/night.sh`):
 
-- **Night:** at `SLEEP_AT` (default 23:00) it goes to its sleep screen and suspends, with a timed wake-up at `WAKE_AT` (default 07:00).
+- **Night:** at `SLEEP_AT` (default 00:00, midnight) it goes to its sleep screen and suspends, with a timed wake-up at `WAKE_AT` (default 07:00).
 - **Away:** while awake it asks the Mac's `/presence` every minute. The Mac answers `home` or `away` from Home Assistant's `KINDLE_DASH_PRESENCE_ENTITY` (default `zone.home`, the number of people home). On `away` the Kindle suspends and wakes every `AWAY_CHECK_SECONDS` (600) to ask again. Wi-Fi only runs when the Kindle is fully awake, so each check wakes it fully; the Mac answers about a minute after waking. It stays asleep while the answer is `away` and reopens the dashboard otherwise. If Home Assistant or the Mac can't be reached, the answer counts as home, so the dashboard stays on.
 - **Power button:** pressed while asleep, it shows the dashboard for 5 minutes and sleeps again.
 
@@ -51,7 +51,7 @@ Settings come from `.env` (git-ignored, mode 600), all prefixed `KINDLE_DASH_`:
 | `KINDLE_DASH_PAPER_UNTIL_HOUR` | `10` | The paper leads the rotation before this hour |
 | `KINDLE_DASH_PAPER_SECONDS` | `120` | Time on each paper page |
 | `KINDLE_DASH_FEED_DIR` | `data/feed` | Where `kindle-dash-feed` keeps `feed.json` (git-ignored) |
-| `KINDLE_DASH_FEED_START_HOUR`, `KINDLE_DASH_FEED_END_HOUR` | `7`, `23` | The feed job does nothing outside these hours |
+| `KINDLE_DASH_FEED_START_HOUR`, `KINDLE_DASH_FEED_END_HOUR` | `7`, `24` | The feed job does nothing outside these hours (24 is midnight) |
 | `KINDLE_DASH_FEED_MODEL` | `qwen3.6-35b-a3b-dwq` | LM Studio model that picks the tweets |
 | `KINDLE_DASH_FEED_INTERESTS` | AI, developer tools, technology companies and markets | What the reader follows, put into the model's prompt |
 | `KINDLE_DASH_LMSTUDIO_URL` | `http://127.0.0.1:1234/v1` | LM Studio's OpenAI-compatible API |
