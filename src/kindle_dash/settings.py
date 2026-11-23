@@ -20,6 +20,13 @@ class Settings(BaseSettings):
     paper_dir: Path = Path(__file__).resolve().parents[2] / "data" / "paper"
     paper_until_hour: int = 10
     paper_seconds: int = 120
+    feed_dir: Path = Path(__file__).resolve().parents[2] / "data" / "feed"
+    feed_start_hour: int = 7
+    feed_end_hour: int = 23
+    feed_model: str = "qwen3.6-35b-a3b-dwq"
+    feed_interests: str = "AI, developer tools, technology companies and markets"
+    lmstudio_url: HttpUrl = HttpUrl("http://127.0.0.1:1234/v1")
+    hermes_browser: Path = Path.home() / ".hermes" / "browser" / "hermes-browser"
 
     @property
     def tz(self) -> ZoneInfo:

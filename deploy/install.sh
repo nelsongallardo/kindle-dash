@@ -21,13 +21,15 @@ render() {
 cd "$PROJECT_DIR"
 find deploy kindle -type f ! -name install.sh | while read -r f; do render "$f"; done
 
-PLIST="$HOME/Library/LaunchAgents/local.kindle-dash.plist"
 mkdir -p logs
-if ! cmp -s "$OUT/deploy/local.kindle-dash.plist" "$PLIST"; then
-  cp "$OUT/deploy/local.kindle-dash.plist" "$PLIST"
-  launchctl bootout "gui/$(id -u)/local.kindle-dash" 2>/dev/null || true
-  launchctl bootstrap "gui/$(id -u)" "$PLIST"
-fi
+for LABEL in local.kindle-dash local.kindle-dash-feed; do
+  PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+  if ! cmp -s "$OUT/deploy/$LABEL.plist" "$PLIST"; then
+    cp "$OUT/deploy/$LABEL.plist" "$PLIST"
+    launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
+    launchctl bootstrap "gui/$(id -u)" "$PLIST"
+  fi
+done
 launchctl kickstart -k "gui/$(id -u)/local.kindle-dash"
 
 K="$OUT/kindle"
@@ -49,4 +51,4 @@ insert or replace into associations(handlerId,interface,contentId,defaultAssoc) 
 mntroot rw >/dev/null
 cp /tmp/kindle-dash-upstart/*.conf /etc/upstart/
 mntroot ro >/dev/null'
-echo "installed: service local.kindle-dash, Kindle app $MAC_HOST:8090, tunnel as $MAC_USER@$MAC_HOST, night $SLEEP_AT-$WAKE_AT"
+echo "installed: services local.kindle-dash and local.kindle-dash-feed, Kindle app $MAC_HOST:8090, tunnel as $MAC_USER@$MAC_HOST, night $SLEEP_AT-$WAKE_AT"

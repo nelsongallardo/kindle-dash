@@ -4,11 +4,12 @@ An e-ink dashboard for a jailbroken Kindle Scribe. The Mac mini serves these scr
 
 - **Paper**: *The Morning Scribe*, a three-page morning newspaper. Page 1 has the lead story, weather with a 24-hour temperature and rain chart, Tube status, and each holding's move at the last close. Page 2 has technology stories and the week ahead for markets. Page 3 has the topics people are discussing on X, each disrupted Tube line with its status, and the rest of today's events. Swipe left or right to turn pages, as in a Kindle book, or tap 1, 2 or 3 at the bottom. Swipes come from the Kindle's own `kindle.gestures.onswipe` API, because the app runtime sends no touch events to pages; `kindle/app/config.xml` must enable the `swipe` gesture. A Hermes agent writes the stories each morning (see [The Morning Scribe](#the-morning-scribe)).
 - **Today**: current weather, a rain warning when rain is likely in the next 12 hours, Tube and Elizabeth line disruptions from the [TfL status API](https://api.tfl.gov.uk) (no key; "Good service on all lines" when there are none), the rest of today's events, tomorrow's first events, and how many lights are on.
+- **Feed**: the three newest tweets worth reading from the X Following timeline, each with a headline and a one-sentence summary in large type, readable from across the room. A local model picks and summarises them (see [Feed](#feed)).
 - **Home**: one tile per Home Assistant `light.*` entity (tap to toggle), plus All on and All off.
 - **Calendar**: the next 7 days from one or more Google Calendar secret iCal links.
 - **Weather**: current conditions, the next 12 hours and the next 5 days from [Open-Meteo](https://open-meteo.com) (no API key), with an icon per condition. The location is Home Assistant's home location, rounded to 2 decimal places (about 1 km) before it is sent.
 
-`/` opens the first rotating screen. Today, Calendar and Weather rotate every `KINDLE_DASH_ROTATE_SECONDS`; each change reloads the data. Before `KINDLE_DASH_PAPER_UNTIL_HOUR` (10:00), once today's paper exists, its three pages lead the rotation and stay up for `KINDLE_DASH_PAPER_SECONDS` each. Home goes back to the rotation after `KINDLE_DASH_HOME_IDLE_SECONDS` without a tap.
+`/` opens the first rotating screen. Today, Feed, Calendar and Weather rotate every `KINDLE_DASH_ROTATE_SECONDS`; each change reloads the data. Before `KINDLE_DASH_PAPER_UNTIL_HOUR` (10:00), once today's paper exists, its three pages lead the rotation and stay up for `KINDLE_DASH_PAPER_SECONDS` each. Home goes back to the rotation after `KINDLE_DASH_HOME_IDLE_SECONDS` without a tap.
 
 To save battery, the Kindle sleeps at night: at `SLEEP_AT` (default 23:00) it goes to its sleep screen and suspends, with a timed wake-up at `WAKE_AT` (default 07:00), when it reopens the dashboard. Woken by hand during the night, it shows the dashboard for 5 minutes and sleeps again. See `kindle/scripts/night.sh`.
 
@@ -35,11 +36,17 @@ Settings come from `.env` (git-ignored, mode 600), all prefixed `KINDLE_DASH_`:
 | `KINDLE_DASH_CALENDAR_DAYS` | `7` | Days shown on Calendar |
 | `KINDLE_DASH_TIMEZONE` | `Europe/London` | Time zone for the clock and events |
 | `KINDLE_DASH_WEATHER_PLACE` | unset | Place name shown on Weather, such as `London`. Display only: the forecast location comes from Home Assistant. |
-| `KINDLE_DASH_ROTATE_SECONDS` | `60` | Time on each rotating screen (Today, Calendar, Weather). Each change flashes the e-ink screen. |
+| `KINDLE_DASH_ROTATE_SECONDS` | `60` | Time on each rotating screen (Today, Feed, Calendar, Weather). Each change flashes the e-ink screen. |
 | `KINDLE_DASH_HOME_IDLE_SECONDS` | `120` | Time on Home before returning to the rotation |
 | `KINDLE_DASH_PAPER_DIR` | `data/paper` | Where `kindle-dash-paper` writes the daily paper (git-ignored) |
 | `KINDLE_DASH_PAPER_UNTIL_HOUR` | `10` | The paper leads the rotation before this hour |
 | `KINDLE_DASH_PAPER_SECONDS` | `120` | Time on each paper page |
+| `KINDLE_DASH_FEED_DIR` | `data/feed` | Where `kindle-dash-feed` keeps `feed.json` (git-ignored) |
+| `KINDLE_DASH_FEED_START_HOUR`, `KINDLE_DASH_FEED_END_HOUR` | `7`, `23` | The feed job does nothing outside these hours |
+| `KINDLE_DASH_FEED_MODEL` | `qwen3.6-35b-a3b-dwq` | LM Studio model that picks the tweets |
+| `KINDLE_DASH_FEED_INTERESTS` | AI, developer tools, technology companies and markets | What the reader follows, put into the model's prompt |
+| `KINDLE_DASH_LMSTUDIO_URL` | `http://127.0.0.1:1234/v1` | LM Studio's OpenAI-compatible API |
+| `KINDLE_DASH_HERMES_BROWSER` | `~/.hermes/browser/hermes-browser` | `playwright-cli` wrapper attached to the logged-in browser |
 
 After changing code or `.env`, restart the service:
 
@@ -63,11 +70,22 @@ A Hermes cron job (`morning-paper`, 06:45 Europe/London) follows [`hermes/mornin
 
 If no paper exists for today, the Paper pages say so and the rotation skips them. The masthead font is [UnifrakturMaguntia](https://fonts.google.com/specimen/UnifrakturMaguntia) (SIL Open Font License, `src/kindle_dash/static/fonts/`); the other fonts are the Kindle's own.
 
+## Feed
+
+launchd `local.kindle-dash-feed` (`deploy/local.kindle-dash-feed.plist`) runs `kindle-dash-feed` every 15 minutes and logs to `logs/feed.log`. No cloud model is involved.
+
+1. `src/kindle_dash/x_timeline.js` runs through `hermes-browser run-code`. It opens its own tab on x.com/home, selects Following, scrolls, records X's `HomeLatestTimeline` JSON responses, and closes the tab. It only reads.
+2. `parse_timeline` turns that JSON into tweets: ads are dropped, retweets become the original tweet, thread replies and long posts are included, and `t.co` links become their display text.
+3. Only tweets from the last 24 hours that were not in an earlier run go to the local model (LM Studio, loaded on demand and unloaded after 5 idle minutes). It returns at most 5 picks with a headline, a one-sentence summary and an importance from 1 to 5. Picks below 4, over the length limits, or for a tweet not in the batch are dropped.
+4. `data/feed/feed.json` keeps the last 30 picks, with the original tweet text, and the IDs of tweets already sent to the model. If the browser or model fails, nothing is saved and the next run sends the same tweets.
+
+Try it without saving: `uv run kindle-dash-feed --dry-run`.
+
 ## Kindle
 
 `ssh kindle` reaches the Kindle over Wi-Fi through a reverse tunnel (see `kindle/scripts/tunnel.sh`).
 
-The files in `kindle/` and `deploy/` contain placeholders: `__MAC_HOST__` (the Mac mini's LAN address), `__MAC_USER__` (its account) and `__PROJECT_DIR__` (this checkout). `deploy/install.sh` fills them in, installs the launchd service, copies the Kindle files and registers the app. It is safe to rerun:
+The files in `kindle/` and `deploy/` contain placeholders: `__MAC_HOST__` (the Mac mini's LAN address), `__MAC_USER__` (its account) and `__PROJECT_DIR__` (this checkout). `deploy/install.sh` fills them in, installs the launchd services, copies the Kindle files and registers the app. It is safe to rerun:
 
 ```bash
 MAC_HOST=192.168.1.10 deploy/install.sh

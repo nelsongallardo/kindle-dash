@@ -14,6 +14,7 @@ from fastapi.templating import Jinja2Templates
 
 from kindle_dash.calendar_feed import CalendarError, CalendarFeed, Day
 from kindle_dash.chart import label_hours, temperature_svg
+from kindle_dash.feed import latest, load_feed
 from kindle_dash.homeassistant import HomeAssistant, HomeAssistantError, Light
 from kindle_dash.paper import Paper, load_paper
 from kindle_dash.settings import Settings
@@ -21,15 +22,17 @@ from kindle_dash.tfl import Disruption, TflError, TubeStatus
 from kindle_dash.weather import Forecast, WeatherError, WeatherFeed
 
 log = logging.getLogger("kindle_dash")
-Screen = Literal["home", "paper", "inside", "talk", "today", "calendar", "weather"]
+Screen = Literal["home", "paper", "inside", "talk", "today", "feed", "calendar", "weather"]
 SCREENS: list[tuple[Screen, str]] = [
     ("home", "Home"),
     ("paper", "Paper"),
     ("today", "Today"),
+    ("feed", "Feed"),
     ("calendar", "Calendar"),
     ("weather", "Weather"),
 ]
-DAY_ROTATION: list[Screen] = ["today", "calendar", "weather"]
+DAY_ROTATION: list[Screen] = ["today", "feed", "calendar", "weather"]
+FEED_ITEMS = 3
 PAPER_SCREENS: list[Screen] = ["paper", "inside", "talk"]
 CHART_WIDTH, CHART_HEIGHT = 870, 140
 
@@ -225,6 +228,13 @@ async def today_screen(request: Request) -> HTMLResponse:
         disruptions=disruptions,
         error=None,
     )
+
+
+@app.get("/feed", response_class=HTMLResponse)
+async def feed_screen(request: Request) -> HTMLResponse:
+    now = datetime.now(settings.tz)
+    items = latest(load_feed(settings.feed_dir), now, FEED_ITEMS)
+    return render(request, "feed", items=items, error=None)
 
 
 @app.get("/paper", response_class=HTMLResponse)
