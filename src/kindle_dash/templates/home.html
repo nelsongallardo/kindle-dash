@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  form { margin: 0; }
+  button { cursor: pointer; font-family: Helvetica, Arial, sans-serif; font-weight: bold;
+           border: 4px solid #000; background: #fff; color: #000; width: 100%; }
+  .all { border-spacing: 0; margin-bottom: 24px; }
+  .all form + form { padding-left: 24px; }
+  .all button { height: 110px; font-size: 32px; }
+  .all .on { background: #000; color: #fff; }
+  /* Two tiles per row as table cells: inline-block halves wrap in the app's old WebKit. */
+  .pair { margin-bottom: 24px; }
+  .pair > :first-child { padding-right: 12px; }
+  .pair > :last-child { padding-left: 12px; }
+  .light { height: 220px; font-size: 34px; }
+  .light.on { background: #000; color: #fff; }
+  .light .state { display: block; font-size: 26px; font-weight: normal; margin-top: 12px; }
+  .light[disabled] { border-style: dashed; }
+</style>
+{% if lights %}
+<div class="all row">
+  <form method="post" action="/lights/all"><input type="hidden" name="state" value="on"><button class="on">All on</button></form>
+  <form method="post" action="/lights/all"><input type="hidden" name="state" value="off"><button>All off</button></form>
+</div>
+{% endif %}
+{% for pair in lights|batch(2) %}
+<div class="pair row">
+  {% for light in pair %}
+  <form method="post" action="/lights/toggle">
+    <input type="hidden" name="entity_id" value="{{ light.entity_id }}">
+    <button class="light {{ 'on' if light.on else '' }}" {{ 'disabled' if not light.available else '' }}>
+      {{ light.name }}
+      <span class="state">{% if not light.available %}Unavailable{% elif light.on %}On{% else %}Off{% endif %}</span>
+    </button>
+  </form>
+  {% endfor %}
+  {% if pair|length == 1 %}<div></div>{% endif %}
+</div>
+{% endfor %}
+{% endblock %}

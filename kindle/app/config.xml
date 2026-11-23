@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:kindle="http://kindle.amazon.com/ns/widget-extensions"
+    id="dev.kindledash" version="1" viewmodes="application">
+    <name xml:lang="en">Dashboard</name>
+    <description xml:lang="en">Home Assistant and calendar dashboard served from the Mac mini</description>
+    <content src="index.html" />
+    <kindle:gestures>
+        <kindle:param name="drag" value="yes" />
+        <kindle:param name="tap" value="yes" />
+    </kindle:gestures>
+    <kindle:network>
+        <kindle:asset key="enableCaching" value="false" />
+    </kindle:network>
+    <kindle:chrome>
+        <kindle:asset key="configureSearchBar" value="none" />
+    </kindle:chrome>
+    <feature name="http://kindle.amazon.com/apis" required="true">
+        <param name="appmgr" value="yes" />
+        <param name="net" value="yes" />
+        <param name="gestures" value="yes" />
+        <param name="chrome" value="yes" />
+        <param name="device" value="yes" />
+        <param name="messaging" value="yes" />
+    </feature>
+    <kindle:settings>
+        <kindle:setting name="saveContext" value="no" />
+    </kindle:settings>
+</widget>

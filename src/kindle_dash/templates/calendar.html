@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  .day { margin-bottom: 26px; }
+  .day h2 { font: bold 30px Helvetica, Arial, sans-serif; border-bottom: 3px solid #000;
+            padding-bottom: 6px; margin-bottom: 10px; }
+  .event { padding: 8px 0; }
+  .event > * { vertical-align: top; }
+  .event .time { width: 190px; font-family: Helvetica, Arial, sans-serif; }
+  .empty { font-style: italic; }
+</style>
+{% for day in days %}
+<section class="day">
+  <h2>{% if loop.first %}Today{% elif loop.index == 2 %}Tomorrow{% else %}{{ day.date.strftime("%A %-d %B") }}{% endif %}</h2>
+  {% for e in day.events %}
+  <div class="event row">
+    <span class="time">{% if e.all_day %}All day{% else %}{{ e.start.strftime("%H:%M") }}–{{ e.end.strftime("%H:%M") }}{% endif %}</span>
+    <span class="title">{{ e.title }}</span>
+  </div>
+  {% else %}
+  <p class="empty">Nothing scheduled</p>
+  {% endfor %}
+</section>
+{% endfor %}
+{% endblock %}
