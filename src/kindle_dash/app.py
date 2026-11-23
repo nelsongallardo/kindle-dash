@@ -249,12 +249,13 @@ async def inside_screen(request: Request) -> HTMLResponse:
 
 @app.get("/talk", response_class=HTMLResponse)
 async def talk_screen(request: Request) -> HTMLResponse:
-    days = await _days_or_none()
+    days, disruptions = await asyncio.gather(_days_or_none(), _tube_or_none())
     now = datetime.now(settings.tz)
     return render(
         request,
         "talk",
         paper=todays_paper(now),
+        disruptions=disruptions,
         events=[e for e in days[0].events if e.all_day or e.end > now] if days else None,
         error=None,
     )

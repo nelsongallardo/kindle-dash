@@ -6,6 +6,8 @@
   .ear { width: 150px; border: 1px solid #000; padding: 6px 10px; font-size: 20px; line-height: 1.2; }
   .ear.right { text-align: right; }
   .ear b { font: bold 34px Helvetica, Arial, sans-serif; }
+  .ear .tube-line { font: bold 18px/1.2 Helvetica, Arial, sans-serif; }
+  .ear .tube-more { font: italic 15px/1.3 "Bookerly", serif; }
   .ear img { vertical-align: middle; }
   .title { text-align: center; white-space: nowrap; font: 60px/1.05 "Masthead", "Bookerly Display", serif; }
   .lead .hed { font-size: 42px; line-height: 1.06; margin-bottom: 8px; }
@@ -42,7 +44,10 @@
   <div class="ear right">
     <div class="label">Tube</div>
     {% if disruptions is none %}<span class="muted">Unavailable</span>
-    {% elif disruptions %}<b>{{ disruptions|length }}</b> line{{ "s" if disruptions|length > 1 }}<br>disrupted
+    {% elif disruptions %}
+    {% for d in disruptions[:3] %}<div class="tube-line">{{ d.line }}</div>{% endfor %}
+    {% if disruptions|length > 3 %}<div class="tube-line">+{{ disruptions|length - 3 }} more</div>{% endif %}
+    <div class="tube-more">Delays: see page 3</div>
     {% else %}Good service<br>on all lines{% endif %}
   </div>
 </div>

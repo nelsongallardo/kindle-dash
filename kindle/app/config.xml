@@ -5,7 +5,7 @@
     <description xml:lang="en">Home Assistant and calendar dashboard served from the Mac mini</description>
     <content src="index.html" />
     <kindle:gestures>
-        <kindle:param name="drag" value="yes" />
+        <kindle:param name="swipe" value="yes" />
         <kindle:param name="tap" value="yes" />
     </kindle:gestures>
     <kindle:network>

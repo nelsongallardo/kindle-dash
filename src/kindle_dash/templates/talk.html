@@ -8,6 +8,7 @@
   .topic p { font-size: 22px; line-height: 1.36; }
   .listing { font-size: 21px; line-height: 1.3; padding: 4px 0; border-bottom: 1px solid #000; }
   .listing > * { vertical-align: top; }
+  .listing .line { width: 260px; font-weight: bold; }
   .listing .when { width: 96px; font: bold 18px "Futura", Helvetica, sans-serif; text-transform: uppercase; letter-spacing: 1px; padding-top: 3px; }
 {% endblock %}
 {% block paper %}
@@ -26,7 +27,15 @@
 {% endfor %}
 {% endif %}
 
-<div class="section" style="margin-top: 8px">Your Day</div>
+<div class="section" style="margin-top: 8px">Tube</div>
+{% if disruptions is none %}<p class="muted">Tube status unavailable</p>
+{% else %}
+{% for d in disruptions %}
+<div class="listing row"><span class="line">{{ d.line }}</span><span>{{ d.status }}</span></div>
+{% else %}<p>Good service on all lines.</p>{% endfor %}
+{% endif %}
+
+<div class="section" style="margin-top: 16px">Your Day</div>
 {% if events is none %}<p class="muted">Calendar unavailable</p>
 {% else %}
 {% for e in events[:4] %}
