@@ -29,6 +29,7 @@
 </style>
 </head>
 <body>
+{% block chrome %}
 <header class="row">
   <div class="clock">{{ now.strftime("%H:%M") }}</div>
   <div class="date">{{ now.strftime("%A %-d %B") }}</div>
@@ -38,6 +39,7 @@
   <a href="/{{ key }}" class="{{ 'active' if key == active else '' }}">{{ label }}</a>
   {% endfor %}
 </nav>
+{% endblock %}
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 {% block content %}{% endblock %}
 </body>

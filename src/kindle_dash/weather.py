@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 OPEN_METEO = "https://api.open-meteo.com/v1/forecast"
 RAIN_LIKELY_PERCENT = 50
 RAIN_LOOKAHEAD_HOURS = 12
+TIMELINE_HOURS = 24
 
 Icon = Literal[
     "clear", "night", "partly", "partly-night", "cloudy", "fog", "rain", "snow", "thunder"
@@ -101,6 +102,7 @@ class Forecast:
     now: Now
     today: DayForecast
     hours: list[Hour]
+    timeline: list[Hour]
     days: list[DayForecast]
     next_rain: Hour | None
 
@@ -186,6 +188,7 @@ def to_forecast(raw: object, now: datetime, hour_step: int, hour_slots: int) -> 
         ),
         today=days[0],
         hours=upcoming[::hour_step][:hour_slots],
+        timeline=upcoming[:TIMELINE_HOURS],
         days=days[1:],
         next_rain=next_rain,
     )

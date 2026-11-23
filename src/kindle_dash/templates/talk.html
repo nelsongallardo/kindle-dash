@@ -1,0 +1,36 @@
+{% extends "paper_base.html" %}
+{% block paper_style %}
+  .top > * { vertical-align: bottom; }
+  .top .small-title { font: 46px/1 "Masthead", "Bookerly Display", serif; }
+  .top .end { text-align: right; }
+  .topic { padding: 4px 0 14px 18px; border-left: 4px solid #000; margin-bottom: 16px; }
+  .topic .hed { font-size: 30px; line-height: 1.12; margin-bottom: 4px; }
+  .topic p { font-size: 22px; line-height: 1.36; }
+  .listing { font-size: 21px; line-height: 1.3; padding: 4px 0; border-bottom: 1px solid #000; }
+  .listing > * { vertical-align: top; }
+  .listing .when { width: 96px; font: bold 18px "Futura", Helvetica, sans-serif; text-transform: uppercase; letter-spacing: 1px; padding-top: 3px; }
+{% endblock %}
+{% block paper %}
+<div class="top row">
+  <span class="small-title">The Morning Scribe</span>
+  <span class="label end">{{ now.strftime("%A %-d %B") }} · Page 3</span>
+</div>
+<div class="rule2"></div>
+
+{% if paper is none %}
+<p class="unready">Today’s paper hasn’t arrived yet.</p>
+{% else %}
+<div class="section">What X is talking about</div>
+{% for t in paper.stories.x_topics %}
+<div class="topic"><div class="hed">{{ t.title }}</div><p>{{ t.summary }}</p></div>
+{% endfor %}
+{% endif %}
+
+<div class="section" style="margin-top: 8px">Your Day</div>
+{% if events is none %}<p class="muted">Calendar unavailable</p>
+{% else %}
+{% for e in events[:4] %}
+<div class="listing row"><span class="when">{% if e.all_day %}All day{% else %}{{ e.start.strftime("%H:%M") }}{% endif %}</span><span>{{ e.title }}</span></div>
+{% else %}<p class="muted">Nothing else in the diary today.</p>{% endfor %}
+{% endif %}
+{% endblock %}

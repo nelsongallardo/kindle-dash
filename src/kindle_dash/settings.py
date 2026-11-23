@@ -1,3 +1,4 @@
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from pydantic import HttpUrl, SecretStr
@@ -16,6 +17,9 @@ class Settings(BaseSettings):
     weather_place: str | None = None
     rotate_seconds: int = 60
     home_idle_seconds: int = 120
+    paper_dir: Path = Path(__file__).resolve().parents[2] / "data" / "paper"
+    paper_until_hour: int = 10
+    paper_seconds: int = 120
 
     @property
     def tz(self) -> ZoneInfo:

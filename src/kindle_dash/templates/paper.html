@@ -1,0 +1,89 @@
+{% extends "paper_base.html" %}
+{% macro deg(t) %}{{ t|round|int }}°{% endmacro %}
+{% macro move(m) %}{% if m.change_percent is none %}–{% else %}{{ "%+.1f"|format(m.change_percent) }}%{% endif %}{% endmacro %}
+{% block paper_style %}
+  .mast > * { vertical-align: middle; }
+  .ear { width: 150px; border: 1px solid #000; padding: 6px 10px; font-size: 20px; line-height: 1.2; }
+  .ear.right { text-align: right; }
+  .ear b { font: bold 34px Helvetica, Arial, sans-serif; }
+  .ear img { vertical-align: middle; }
+  .title { text-align: center; white-space: nowrap; font: 60px/1.05 "Masthead", "Bookerly Display", serif; }
+  .lead .hed { font-size: 42px; line-height: 1.06; margin-bottom: 8px; }
+  .lead p { font-size: 22px; line-height: 1.32; text-align: justify; }
+  .lead p:first-letter { float: left; font: bold 66px/0.9 "Bookerly Display", serif; padding: 4px 8px 0 0; }
+  .lead .src { margin-top: 6px; }
+  .section .facts { float: right; font: 19px Helvetica, Arial, sans-serif; letter-spacing: 0; text-transform: none; font-weight: normal; }
+  .rain { font: bold 20px Helvetica, Arial, sans-serif; border: 3px solid #000; padding: 3px 10px; display: inline-block; margin: 2px 0 4px; }
+  .hours > * { text-align: center; font: 19px Helvetica, Arial, sans-serif; vertical-align: top; }
+  .chart { display: block; }
+  .stock { border-bottom: 1px solid #000; padding: 1px 0; }
+  .stock > * { vertical-align: middle; }
+  .stock .sym { width: 100px; font: bold 21px "Futura", Helvetica, sans-serif; letter-spacing: 1px; }
+  .stock .what { font-size: 19px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stock .what i { font-style: italic; }
+  .stock .chg { width: 110px; text-align: right; font: bold 22px Helvetica, Arial, sans-serif; }
+  .stock .chg span { padding: 1px 6px; }
+  .stock .chg .big { background: #000; color: #fff; }
+  .subhead { text-align: right; font: italic 18px "Bookerly", serif; }
+{% endblock %}
+{% block paper %}
+<div class="folio label row">
+  <span>Vol. I · No. {{ now.strftime("%-j") }}</span>
+  <span class="mid">{{ now.strftime("%A %-d %B %Y") }}</span>
+  <span class="end">{{ place or "Home" }} edition</span>
+</div>
+<div class="mast row" style="margin-top: 10px">
+  <div class="ear">
+    <div class="label">Weather</div>
+    {% if forecast %}<img src="/static/icons/{{ forecast.now.condition.icon }}.svg" width="46" height="46" alt=""> <b>{{ deg(forecast.now.temp) }}</b><br>{{ forecast.now.condition.label }}
+    {% else %}<span class="muted">Unavailable</span>{% endif %}
+  </div>
+  <div class="title">The Morning Scribe</div>
+  <div class="ear right">
+    <div class="label">Tube</div>
+    {% if disruptions is none %}<span class="muted">Unavailable</span>
+    {% elif disruptions %}<b>{{ disruptions|length }}</b> line{{ "s" if disruptions|length > 1 }}<br>disrupted
+    {% else %}Good service<br>on all lines{% endif %}
+  </div>
+</div>
+<div class="rule2"></div>
+
+{% if paper is none %}
+<p class="unready">Today’s paper hasn’t arrived yet.</p>
+{% else %}
+{% set s = paper.stories %}
+<div class="lead">
+  <div class="hed">{{ s.lead.title }}</div>
+  <p>{{ s.lead.summary }}</p>
+  <div class="src">{{ s.lead.source }}</div>
+</div>
+
+<div class="rule"></div>
+{% endif %}
+
+{% set f = forecast %}
+<div class="section">The Weather{% if f %}<span class="facts">High <b>{{ deg(f.today.high) }}</b> · low <b>{{ deg(f.today.low) }}</b> · wind {{ f.now.wind_mph|round|int }} mph · sun {{ f.today.sunrise.strftime("%H:%M") }}–{{ f.today.sunset.strftime("%H:%M") }}</span>{% endif %}</div>
+{% if f %}
+{% if f.next_rain %}<span class="rain">Rain likely from {{ f.next_rain.time.strftime("%H:%M") }} ({{ f.next_rain.rain_chance }}%)</span>{% endif %}
+<div class="hours row">
+  {% for h in chart_hours %}
+  <div>{{ h.time.strftime("%H:%M") }}<br><img src="/static/icons/{{ h.condition.icon }}.svg" width="34" height="34" alt="{{ h.condition.label }}"></div>
+  {% endfor %}
+</div>
+<img class="chart" src="/paper/weather.svg?h={{ now.strftime('%H') }}" width="870" height="140" alt="Temperature and rain chance, next 24 hours">
+{% else %}
+<p class="muted">Weather unavailable</p>
+{% endif %}
+
+{% if paper is not none %}
+<div class="section" style="margin-top: 12px">Your Portfolio <span class="subhead" style="float: right; letter-spacing: 0; text-transform: none; font-weight: normal">change at the last close</span></div>
+{% for m in paper.moves %}
+{% set note = paper.note_for(m.symbol) %}
+<div class="stock row">
+  <span class="sym">{{ m.symbol }}</span>
+  <span class="what">{% if note %}<i>{{ note }}</i>{% else %}{{ m.name }}{% endif %}</span>
+  <span class="chg"><span class="{{ 'big' if m.change_percent is not none and m.change_percent|abs >= 5 }}">{{ move(m) }}</span></span>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

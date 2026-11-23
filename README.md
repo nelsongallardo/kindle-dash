@@ -1,13 +1,14 @@
 # kindle-dash
 
-An e-ink dashboard for a jailbroken Kindle Scribe. The Mac mini serves four screens on port 8090:
+An e-ink dashboard for a jailbroken Kindle Scribe. The Mac mini serves these screens on port 8090:
 
+- **Paper**: *The Morning Scribe*, a three-page morning newspaper. Page 1 has the lead story, weather with a 24-hour temperature and rain chart, Tube status, and each holding's move at the last close. Page 2 has technology stories and the week ahead for markets. Page 3 has the topics people are discussing on X and the rest of today's events. A Hermes agent writes the stories each morning (see [The Morning Scribe](#the-morning-scribe)).
 - **Today**: current weather, a rain warning when rain is likely in the next 12 hours, Tube and Elizabeth line disruptions from the [TfL status API](https://api.tfl.gov.uk) (no key; "Good service on all lines" when there are none), the rest of today's events, tomorrow's first events, and how many lights are on.
 - **Home**: one tile per Home Assistant `light.*` entity (tap to toggle), plus All on and All off.
 - **Calendar**: the next 7 days from one or more Google Calendar secret iCal links.
 - **Weather**: current conditions, the next 12 hours and the next 5 days from [Open-Meteo](https://open-meteo.com) (no API key), with an icon per condition. The location is Home Assistant's home location, rounded to 2 decimal places (about 1 km) before it is sent.
 
-`/` opens Today. Today, Calendar and Weather rotate every `KINDLE_DASH_ROTATE_SECONDS`; each change reloads the data. Home goes back to Today after `KINDLE_DASH_HOME_IDLE_SECONDS` without a tap.
+`/` opens the first rotating screen. Today, Calendar and Weather rotate every `KINDLE_DASH_ROTATE_SECONDS`; each change reloads the data. Before `KINDLE_DASH_PAPER_UNTIL_HOUR` (10:00), once today's paper exists, its three pages lead the rotation and stay up for `KINDLE_DASH_PAPER_SECONDS` each. Home goes back to the rotation after `KINDLE_DASH_HOME_IDLE_SECONDS` without a tap.
 
 To save battery, the Kindle sleeps at night: at `SLEEP_AT` (default 23:00) it goes to its sleep screen and suspends, with a timed wake-up at `WAKE_AT` (default 07:00), when it reopens the dashboard. Woken by hand during the night, it shows the dashboard for 5 minutes and sleeps again. See `kindle/scripts/night.sh`.
 
@@ -35,7 +36,10 @@ Settings come from `.env` (git-ignored, mode 600), all prefixed `KINDLE_DASH_`:
 | `KINDLE_DASH_TIMEZONE` | `Europe/London` | Time zone for the clock and events |
 | `KINDLE_DASH_WEATHER_PLACE` | unset | Place name shown on Weather, such as `London`. Display only: the forecast location comes from Home Assistant. |
 | `KINDLE_DASH_ROTATE_SECONDS` | `60` | Time on each rotating screen (Today, Calendar, Weather). Each change flashes the e-ink screen. |
-| `KINDLE_DASH_HOME_IDLE_SECONDS` | `120` | Time on Home before returning to Today |
+| `KINDLE_DASH_HOME_IDLE_SECONDS` | `120` | Time on Home before returning to the rotation |
+| `KINDLE_DASH_PAPER_DIR` | `data/paper` | Where `kindle-dash-paper` writes the daily paper (git-ignored) |
+| `KINDLE_DASH_PAPER_UNTIL_HOUR` | `10` | The paper leads the rotation before this hour |
+| `KINDLE_DASH_PAPER_SECONDS` | `120` | Time on each paper page |
 
 After changing code or `.env`, restart the service:
 
@@ -48,6 +52,16 @@ Checks:
 ```bash
 uv run ruff check . && uv run pyright && uv run pytest
 ```
+
+## The Morning Scribe
+
+A Hermes cron job (`morning-paper`, 06:45 Europe/London) follows [`hermes/morning-paper.md`](hermes/morning-paper.md). The agent only writes the stories; prices and the layout are ordinary code.
+
+1. `uv run kindle-dash-paper prepare` reads holdings from the `ledgi` CLI and each holding's move at the last close from Yahoo Finance's chart endpoint. It writes `data/paper/<date>.prepared.json`. Mutual funds and stablecoins are skipped; a GBP ETF gets the London `.L` symbol.
+2. The agent researches news on publisher pages and reads X (read only) in the shared logged-in browser, then writes `data/paper/<date>.stories.json`.
+3. `uv run kindle-dash-paper publish <stories.json>` validates the stories against the schema (`uv run kindle-dash-paper schema`). Text over the length the page can hold, or a note for a symbol not in the portfolio, fails with exit 1 and the agent fixes it. On success it writes `data/paper/<date>.json`, which the dashboard reads.
+
+If no paper exists for today, the Paper pages say so and the rotation skips them. The masthead font is [UnifrakturMaguntia](https://fonts.google.com/specimen/UnifrakturMaguntia) (SIL Open Font License, `src/kindle_dash/static/fonts/`); the other fonts are the Kindle's own.
 
 ## Kindle
 

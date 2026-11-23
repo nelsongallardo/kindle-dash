@@ -8,25 +8,30 @@ from typing import Literal
 
 import uvicorn
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from kindle_dash.calendar_feed import CalendarError, CalendarFeed, Day
+from kindle_dash.chart import label_hours, temperature_svg
 from kindle_dash.homeassistant import HomeAssistant, HomeAssistantError, Light
+from kindle_dash.paper import Paper, load_paper
 from kindle_dash.settings import Settings
 from kindle_dash.tfl import Disruption, TflError, TubeStatus
 from kindle_dash.weather import Forecast, WeatherError, WeatherFeed
 
 log = logging.getLogger("kindle_dash")
-Screen = Literal["home", "today", "calendar", "weather"]
+Screen = Literal["home", "paper", "inside", "talk", "today", "calendar", "weather"]
 SCREENS: list[tuple[Screen, str]] = [
     ("home", "Home"),
+    ("paper", "Paper"),
     ("today", "Today"),
     ("calendar", "Calendar"),
     ("weather", "Weather"),
 ]
-ROTATION: list[Screen] = ["today", "calendar", "weather"]
+DAY_ROTATION: list[Screen] = ["today", "calendar", "weather"]
+PAPER_SCREENS: list[Screen] = ["paper", "inside", "talk"]
+CHART_WIDTH, CHART_HEIGHT = 870, 140
 
 settings = Settings()
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
@@ -59,21 +64,35 @@ app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 
-def next_screen(screen: Screen) -> tuple[int, Screen]:
-    if screen in ROTATION:
-        return settings.rotate_seconds, ROTATION[(ROTATION.index(screen) + 1) % len(ROTATION)]
-    return settings.home_idle_seconds, ROTATION[0]
+def rotation(now: datetime, paper_ready: bool, until_hour: int) -> list[Screen]:
+    if paper_ready and now.hour < until_hour:
+        return PAPER_SCREENS + DAY_ROTATION
+    return DAY_ROTATION
+
+
+def next_screen(screen: Screen, screens: list[Screen]) -> tuple[int, Screen]:
+    if screen not in screens:
+        return settings.home_idle_seconds, screens[0]
+    dwell = settings.paper_seconds if screen in PAPER_SCREENS else settings.rotate_seconds
+    return dwell, screens[(screens.index(screen) + 1) % len(screens)]
+
+
+def todays_paper(now: datetime) -> Paper | None:
+    return load_paper(settings.paper_dir, now.date())
 
 
 def render(request: Request, screen: Screen, **context: object) -> HTMLResponse:
-    seconds, then = next_screen(screen)
+    now = datetime.now(settings.tz)
+    seconds, then = next_screen(
+        screen, rotation(now, todays_paper(now) is not None, settings.paper_until_hour)
+    )
     return templates.TemplateResponse(
         request,
         f"{screen}.html",
         {
             "screens": SCREENS,
             "active": screen,
-            "now": datetime.now(settings.tz),
+            "now": now,
             "refresh_seconds": seconds,
             "refresh_url": f"/{then}",
             **context,
@@ -83,7 +102,11 @@ def render(request: Request, screen: Screen, **context: object) -> HTMLResponse:
 
 @app.get("/")
 async def index() -> RedirectResponse:
-    return RedirectResponse(f"/{ROTATION[0]}", status_code=303)
+    now = datetime.now(settings.tz)
+    return RedirectResponse(
+        f"/{rotation(now, todays_paper(now) is not None, settings.paper_until_hour)[0]}",
+        status_code=303,
+    )
 
 
 @app.get("/home", response_class=HTMLResponse)
@@ -202,6 +225,46 @@ async def today_screen(request: Request) -> HTMLResponse:
         disruptions=disruptions,
         error=None,
     )
+
+
+@app.get("/paper", response_class=HTMLResponse)
+async def paper_screen(request: Request) -> HTMLResponse:
+    forecast, disruptions = await asyncio.gather(_forecast_or_none(), _tube_or_none())
+    return render(
+        request,
+        "paper",
+        paper=todays_paper(datetime.now(settings.tz)),
+        forecast=forecast,
+        chart_hours=label_hours(forecast.timeline) if forecast else [],
+        disruptions=disruptions,
+        place=settings.weather_place,
+        error=None,
+    )
+
+
+@app.get("/inside", response_class=HTMLResponse)
+async def inside_screen(request: Request) -> HTMLResponse:
+    return render(request, "inside", paper=todays_paper(datetime.now(settings.tz)), error=None)
+
+
+@app.get("/talk", response_class=HTMLResponse)
+async def talk_screen(request: Request) -> HTMLResponse:
+    days = await _days_or_none()
+    now = datetime.now(settings.tz)
+    return render(
+        request,
+        "talk",
+        paper=todays_paper(now),
+        events=[e for e in days[0].events if e.all_day or e.end > now] if days else None,
+        error=None,
+    )
+
+
+@app.get("/paper/weather.svg")
+async def weather_chart() -> Response:
+    forecast = await _forecast_or_none()
+    hours = forecast.timeline if forecast else []
+    return Response(temperature_svg(hours, CHART_WIDTH, CHART_HEIGHT), media_type="image/svg+xml")
 
 
 def main() -> None:
