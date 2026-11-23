@@ -29,6 +29,12 @@ class _State(BaseModel):
     attributes: _Attributes
 
 
+class _Config(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    latitude: float
+    longitude: float
+
+
 _STATES = TypeAdapter(list[_State])
 
 
@@ -68,6 +74,13 @@ class HomeAssistant:
             raise HomeAssistantError(f"unexpected /api/states payload: {e}") from e
         lights = [_to_light(s) for s in states if s.entity_id.startswith("light.")]
         return sorted(lights, key=lambda light: light.name.lower())
+
+    async def approximate_location(self) -> tuple[float, float]:
+        try:
+            config = _Config.model_validate(await self._get("/api/config"))
+        except ValidationError as e:
+            raise HomeAssistantError(f"unexpected /api/config payload: {e}") from e
+        return round(config.latitude, 2), round(config.longitude, 2)
 
     async def _light(self, entity_id: str) -> Light:
         try:

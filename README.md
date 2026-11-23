@@ -1,9 +1,14 @@
 # kindle-dash
 
-An e-ink dashboard for a jailbroken Kindle Scribe. The Mac mini serves two screens on port 8090:
+An e-ink dashboard for a jailbroken Kindle Scribe. The Mac mini serves three screens on port 8090:
 
 - **Home**: one tile per Home Assistant `light.*` entity (tap to toggle), plus All on and All off.
 - **Calendar**: the next 7 days from one or more Google Calendar secret iCal links.
+- **Weather**: current conditions, the next 12 hours and the next 5 days from [Open-Meteo](https://open-meteo.com) (no API key), with an icon per condition. The location is Home Assistant's home location, rounded to 2 decimal places (about 1 km) before it is sent.
+
+`/` opens Calendar. Calendar and Weather swap every `KINDLE_DASH_ROTATE_SECONDS`; each swap reloads the data. Home goes back to Calendar after `KINDLE_DASH_HOME_IDLE_SECONDS` without a tap.
+
+<img src="docs/weather.png" alt="Weather screen on the Kindle: current conditions, next hours and next days" width="465">
 
 The Kindle shows them in a Kindle web app (`dev.kindledash`) that opens full-screen at boot. Secrets stay on the Mac; the Kindle only loads the pages.
 
@@ -20,12 +25,14 @@ Settings come from `.env` (git-ignored, mode 600), all prefixed `KINDLE_DASH_`:
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `KINDLE_DASH_HA_TOKEN` | unset | Home Assistant long-lived access token. Without it, Home shows "token not set". |
+| `KINDLE_DASH_HA_TOKEN` | unset | Home Assistant long-lived access token. Without it, Home and Weather show "token not set". |
 | `KINDLE_DASH_HA_URL` | `http://127.0.0.1:8123` | Home Assistant base URL |
 | `KINDLE_DASH_CALENDAR_ICS_URLS` | `[]` | JSON list of secret iCal URLs |
 | `KINDLE_DASH_CALENDAR_DAYS` | `7` | Days shown on Calendar |
 | `KINDLE_DASH_TIMEZONE` | `Europe/London` | Time zone for the clock and events |
-| `KINDLE_DASH_REFRESH_SECONDS` | `300` | Page reload interval. Each reload flashes the e-ink screen. |
+| `KINDLE_DASH_WEATHER_PLACE` | unset | Place name shown on Weather, such as `London`. Display only: the forecast location comes from Home Assistant. |
+| `KINDLE_DASH_ROTATE_SECONDS` | `60` | Time on Calendar or Weather before switching to the other. Each switch flashes the e-ink screen. |
+| `KINDLE_DASH_HOME_IDLE_SECONDS` | `120` | Time on Home before returning to Calendar |
 
 After changing code or `.env`, restart the service:
 

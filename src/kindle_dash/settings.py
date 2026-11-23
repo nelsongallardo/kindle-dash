@@ -13,7 +13,9 @@ class Settings(BaseSettings):
     calendar_ics_urls: list[SecretStr] = []
     calendar_days: int = 7
     timezone: str = "Europe/London"
-    refresh_seconds: int = 300
+    weather_place: str | None = None
+    rotate_seconds: int = 60
+    home_idle_seconds: int = 120
 
     @property
     def tz(self) -> ZoneInfo:

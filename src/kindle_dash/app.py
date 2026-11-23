@@ -8,15 +8,22 @@ from typing import Literal
 import uvicorn
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from kindle_dash.calendar_feed import CalendarError, CalendarFeed
 from kindle_dash.homeassistant import HomeAssistant, HomeAssistantError
 from kindle_dash.settings import Settings
+from kindle_dash.weather import WeatherError, WeatherFeed
 
 log = logging.getLogger("kindle_dash")
-Screen = Literal["home", "calendar"]
-SCREENS: list[tuple[Screen, str]] = [("home", "Home"), ("calendar", "Calendar")]
+Screen = Literal["home", "calendar", "weather"]
+SCREENS: list[tuple[Screen, str]] = [
+    ("home", "Home"),
+    ("calendar", "Calendar"),
+    ("weather", "Weather"),
+]
+ROTATION: list[Screen] = ["calendar", "weather"]
 
 settings = Settings()
 templates = Jinja2Templates(directory=Path(__file__).parent / "templates")
@@ -30,6 +37,7 @@ calendar = CalendarFeed(
     settings.tz,
     settings.calendar_days,
 )
+weather = WeatherFeed(ha.approximate_location, settings.tz) if ha else None
 
 
 @asynccontextmanager
@@ -37,13 +45,23 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
     yield
     if ha:
         await ha.aclose()
+    if weather:
+        await weather.aclose()
     await calendar.aclose()
 
 
 app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
+app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
+
+
+def next_screen(screen: Screen) -> tuple[int, Screen]:
+    if screen in ROTATION:
+        return settings.rotate_seconds, ROTATION[(ROTATION.index(screen) + 1) % len(ROTATION)]
+    return settings.home_idle_seconds, ROTATION[0]
 
 
 def render(request: Request, screen: Screen, **context: object) -> HTMLResponse:
+    seconds, then = next_screen(screen)
     return templates.TemplateResponse(
         request,
         f"{screen}.html",
@@ -51,7 +69,8 @@ def render(request: Request, screen: Screen, **context: object) -> HTMLResponse:
             "screens": SCREENS,
             "active": screen,
             "now": datetime.now(settings.tz),
-            "refresh_seconds": settings.refresh_seconds,
+            "refresh_seconds": seconds,
+            "refresh_url": f"/{then}",
             **context,
         },
     )
@@ -59,7 +78,7 @@ def render(request: Request, screen: Screen, **context: object) -> HTMLResponse:
 
 @app.get("/")
 async def index() -> RedirectResponse:
-    return RedirectResponse("/home", status_code=303)
+    return RedirectResponse(f"/{ROTATION[0]}", status_code=303)
 
 
 @app.get("/home", response_class=HTMLResponse)
@@ -102,6 +121,23 @@ async def calendar_screen(request: Request) -> HTMLResponse:
     except CalendarError as e:
         log.warning("calendar: %s", e)
         return render(request, "calendar", days=[], error="Can't load the calendar.")
+
+
+@app.get("/weather", response_class=HTMLResponse)
+async def weather_screen(request: Request) -> HTMLResponse:
+    if weather is None:
+        return render(request, "weather", forecast=None, error="Home Assistant token not set.")
+    try:
+        return render(
+            request,
+            "weather",
+            forecast=await weather.forecast(),
+            place=settings.weather_place,
+            error=None,
+        )
+    except (WeatherError, HomeAssistantError) as e:
+        log.warning("weather: %s", e)
+        return render(request, "weather", forecast=None, error="Can't load the weather.")
 
 
 def main() -> None:

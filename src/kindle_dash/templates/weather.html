@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% macro deg(t) %}{{ t|round|int }}°{% endmacro %}
+{% macro icon(c, size) %}<img src="/static/icons/{{ c.icon }}.svg" width="{{ size }}" height="{{ size }}" alt="{{ c.label }}">{% endmacro %}
+{% block content %}
+<style>
+  .sans { font-family: Helvetica, Arial, sans-serif; }
+  .now { margin-bottom: 12px; }
+  .now .pic { width: 180px; }
+  .now .temp { font: bold 104px/1 Helvetica, Arial, sans-serif; }
+  .now .place { font: bold 28px Helvetica, Arial, sans-serif; text-transform: uppercase; letter-spacing: 2px; }
+  .now .label { font-size: 40px; }
+  .now .feels { font-size: 28px; }
+  .facts { border-top: 3px solid #000; border-bottom: 3px solid #000; padding: 8px 0; margin-bottom: 16px; }
+  .facts > * { text-align: center; font: 26px Helvetica, Arial, sans-serif; }
+  .facts b { display: block; font-size: 32px; }
+  h2 { font: bold 30px Helvetica, Arial, sans-serif; border-bottom: 3px solid #000;
+       padding-bottom: 4px; margin-bottom: 6px; }
+  .hours { margin-bottom: 16px; }
+  .hours > * { text-align: center; font: 26px Helvetica, Arial, sans-serif; vertical-align: top; }
+  .hours b { display: block; font-size: 32px; }
+  .day { padding: 0; font: 28px Helvetica, Arial, sans-serif; }
+  .day .name { width: 150px; font-weight: bold; }
+  .day .pic { width: 80px; }
+  .day .hl { width: 150px; text-align: right; }
+  .day .rain { width: 110px; text-align: right; }
+</style>
+{% if forecast %}
+{% set f = forecast %}
+<div class="now row">
+  <div class="pic">{{ icon(f.now.condition, 160) }}</div>
+  <div>
+    {% if place %}<div class="place">{{ place }}</div>{% endif %}
+    <div class="temp">{{ deg(f.now.temp) }}</div>
+    <div class="label">{{ f.now.condition.label }}</div>
+    <div class="feels sans">Feels like {{ deg(f.now.feels_like) }}</div>
+  </div>
+</div>
+<div class="facts row">
+  <div><b>{{ deg(f.today.high) }} / {{ deg(f.today.low) }}</b>High / low</div>
+  <div><b>{{ f.today.rain_chance }}%</b>Rain</div>
+  <div><b>{{ f.now.wind_mph|round|int }} mph</b>Wind</div>
+  <div><b>{{ f.today.sunrise.strftime("%H:%M") }} · {{ f.today.sunset.strftime("%H:%M") }}</b>Sunrise · sunset</div>
+</div>
+<h2>Next hours</h2>
+<div class="hours row">
+  {% for h in f.hours %}
+  <div>{{ h.time.strftime("%H:%M") }}<br>{{ icon(h.condition, 60) }}<b>{{ deg(h.temp) }}</b>{{ h.rain_chance }}%</div>
+  {% endfor %}
+</div>
+<h2>Next days</h2>
+{% for d in f.days %}
+<div class="day row">
+  <span class="name">{{ d.date.strftime("%a") }}</span>
+  <span class="pic">{{ icon(d.condition, 48) }}</span>
+  <span>{{ d.condition.label }}</span>
+  <span class="hl">{{ deg(d.high) }} / {{ deg(d.low) }}</span>
+  <span class="rain">{{ d.rain_chance }}%</span>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}
