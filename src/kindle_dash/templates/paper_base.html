@@ -27,25 +27,10 @@
   {% block paper_style %}{% endblock %}
 </style>
 {% block paper %}{% endblock %}
-{% set pages = ["paper", "inside", "talk"] %}
-{% set here = pages.index(active) %}
 <div class="paper-nav row">
   <span class="pages">{% for key, n in [("paper", 1), ("inside", 2), ("talk", 3)] %}<a href="/{{ key }}" class="{{ 'active' if key == active else '' }}">{{ n }}</a>{% endfor %}</span>
   {% for key, label in screens if key != "paper" %}
   <a href="/{{ key }}">{{ label }}</a>
   {% endfor %}
 </div>
-<script>
-  // The Kindle app runtime has no touch events; swipes arrive through its own gestures API.
-  (function () {
-    var prev = {{ (("/" ~ pages[here - 1]) if here > 0 else "") | tojson }};
-    var next = {{ (("/" ~ pages[here + 1]) if here < 2 else "") | tojson }};
-    if (window.kindle && window.kindle.gestures) {
-      window.kindle.gestures.onswipe = function (direction) {
-        var url = direction === "left" ? next : direction === "right" ? prev : "";
-        if (url) { window.location.href = url; }
-      };
-    }
-  })();
-</script>
 {% endblock %}

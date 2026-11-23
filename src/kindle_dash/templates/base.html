@@ -42,5 +42,14 @@
 {% endblock %}
 {% if error %}<p class="error">{{ error }}</p>{% endif %}
 {% block content %}{% endblock %}
+<script>
+  // The Kindle app runtime has no touch events; swipes arrive through its own gestures API.
+  if (window.kindle && window.kindle.gestures) {
+    window.kindle.gestures.onswipe = function (direction) {
+      if (direction === "left") { window.location.href = {{ swipe_next | tojson }}; }
+      if (direction === "right") { window.location.href = {{ swipe_prev | tojson }}; }
+    };
+  }
+</script>
 </body>
 </html>

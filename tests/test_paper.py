@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from kindle_dash.app import rotation
+from kindle_dash.app import rotation, swipe_targets
 from kindle_dash.paper import Move, PaperError, Prepared, daily_change, publish
 
 LONDON = ZoneInfo("Europe/London")
@@ -63,3 +63,10 @@ def test_paper_leads_the_rotation_only_in_the_morning() -> None:
     assert rotation(morning, paper_ready=True, until_hour=10)[:3] == ["paper", "inside", "talk"]
     assert "paper" not in rotation(morning, paper_ready=False, until_hour=10)
     assert "paper" not in rotation(afternoon, paper_ready=True, until_hour=10)
+
+
+def test_swipe_walks_every_screen_and_paper_pages_only_when_the_paper_exists() -> None:
+    assert swipe_targets("paper", paper_ready=True) == ("home", "inside")
+    assert swipe_targets("talk", paper_ready=True) == ("inside", "today")
+    assert swipe_targets("paper", paper_ready=False) == ("home", "today")
+    assert swipe_targets("weather", paper_ready=False) == ("calendar", "home")

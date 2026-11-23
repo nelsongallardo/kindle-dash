@@ -80,15 +80,31 @@ def next_screen(screen: Screen, screens: list[Screen]) -> tuple[int, Screen]:
     return dwell, screens[(screens.index(screen) + 1) % len(screens)]
 
 
+def swipe_order(paper_ready: bool) -> list[Screen]:
+    order: list[Screen] = []
+    for key, _ in SCREENS:
+        if key == "paper" and paper_ready:
+            order += PAPER_SCREENS
+        else:
+            order.append(key)
+    return order
+
+
+def swipe_targets(screen: Screen, paper_ready: bool) -> tuple[Screen, Screen]:
+    order = swipe_order(paper_ready)
+    here = order.index(screen) if screen in order else order.index("paper")
+    return order[here - 1], order[(here + 1) % len(order)]
+
+
 def todays_paper(now: datetime) -> Paper | None:
     return load_paper(settings.paper_dir, now.date())
 
 
 def render(request: Request, screen: Screen, **context: object) -> HTMLResponse:
     now = datetime.now(settings.tz)
-    seconds, then = next_screen(
-        screen, rotation(now, todays_paper(now) is not None, settings.paper_until_hour)
-    )
+    paper_ready = todays_paper(now) is not None
+    seconds, then = next_screen(screen, rotation(now, paper_ready, settings.paper_until_hour))
+    swipe_prev, swipe_next = swipe_targets(screen, paper_ready)
     return templates.TemplateResponse(
         request,
         f"{screen}.html",
@@ -98,6 +114,8 @@ def render(request: Request, screen: Screen, **context: object) -> HTMLResponse:
             "now": now,
             "refresh_seconds": seconds,
             "refresh_url": f"/{then}",
+            "swipe_prev": f"/{swipe_prev}",
+            "swipe_next": f"/{swipe_next}",
             **context,
         },
     )
