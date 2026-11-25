@@ -5,7 +5,7 @@ An e-ink dashboard for a jailbroken Kindle Scribe. The Mac mini serves these scr
 - **Paper**: *The Morning Scribe*, a three-page morning newspaper. Page 1 has the lead story, weather with a 24-hour temperature and rain chart, Tube status, and each holding's move at the last close. Page 2 has technology stories and the week ahead for markets. Page 3 has the topics people are discussing on X, each disrupted Tube line with its status, and the rest of today's events. Tap 1, 2 or 3 at the bottom to turn pages, or swipe. A Hermes agent writes the stories each morning (see [The Morning Scribe](#the-morning-scribe)).
 - **Today**: current weather, a rain warning when rain is likely in the next 12 hours, Tube and Elizabeth line disruptions from the [TfL status API](https://api.tfl.gov.uk) (no key; "Good service on all lines" when there are none), the rest of today's events, tomorrow's first events, and how many lights are on.
 - **Feed**: the three newest tweets worth reading from the X Following timeline (from the last 12 hours), each with a headline and a one-sentence summary in large type, readable from across the room. A local model picks and summarises them (see [Feed](#feed)).
-- **Home**: one tile per Home Assistant `light.*` entity (tap to toggle), plus All on and All off.
+- **Home**: one tile per Home Assistant `light.*` entity (tap to toggle), plus All on, All off and Good night (see below).
 - **Calendar**: the next 7 days from one or more Google Calendar secret iCal links.
 - **Weather**: current conditions, the next 12 hours and the next 5 days from [Open-Meteo](https://open-meteo.com) (no API key), with an icon per condition. The location is Home Assistant's home location, rounded to 2 decimal places (about 1 km) before it is sent.
 
@@ -17,7 +17,8 @@ To save battery, the Kindle sleeps at night and while nobody is home (`kindle/sc
 
 - **Night:** at `SLEEP_AT` (default 00:00, midnight) it goes to its sleep screen and suspends, with a timed wake-up at `WAKE_AT` (default 07:00).
 - **Away:** while awake it asks the Mac's `/presence` every minute. The Mac answers `home` or `away` from Home Assistant's `KINDLE_DASH_PRESENCE_ENTITY` (default `zone.home`, the number of people home). On `away` the Kindle suspends and wakes every `AWAY_CHECK_SECONDS` (600) to ask again. Wi-Fi only runs when the Kindle is fully awake, so each check wakes it fully; the Mac answers about a minute after waking. It stays asleep while the answer is `away` and reopens the dashboard otherwise. If Home Assistant or the Mac can't be reached, the answer counts as home, so the dashboard stays on.
-- **Power button:** pressed while asleep, it shows the dashboard for 5 minutes and sleeps again.
+- **Good night:** the button on Home turns off every light and puts the Kindle to sleep until `WAKE_AT`. The Mac runs `night.sh bedtime` on the Kindle over SSH (`KINDLE_DASH_KINDLE_SSH_HOST`). If the Kindle can't be reached, Home says "The Kindle didn't go to sleep."
+- **Power button:** pressed while asleep, it shows the dashboard for 5 minutes and sleeps again if it is still night or nobody is home. Before `SLEEP_AT`, it also cancels Good night.
 
 Turn off the Kindle's device passcode. Every timed wake-up otherwise stops at the lock screen.
 
@@ -47,6 +48,7 @@ Settings come from `.env` (git-ignored, mode 600), all prefixed `KINDLE_DASH_`:
 | `KINDLE_DASH_ROTATE_SECONDS` | `60` | Time on each rotating screen (Today, Feed, Calendar, Weather). Each change flashes the e-ink screen. |
 | `KINDLE_DASH_HOME_IDLE_SECONDS` | `120` | Time on Home before returning to the rotation |
 | `KINDLE_DASH_PRESENCE_ENTITY` | `zone.home` | Home Assistant entity that says whether anyone is home: a zone (count of people) or a `person.*` |
+| `KINDLE_DASH_KINDLE_SSH_HOST` | `kindle` | `~/.ssh/config` entry used by the Good night button |
 | `KINDLE_DASH_PAPER_DIR` | `data/paper` | Where `kindle-dash-paper` writes the daily paper (git-ignored) |
 | `KINDLE_DASH_PAPER_UNTIL_HOUR` | `10` | The paper leads the rotation before this hour |
 | `KINDLE_DASH_PAPER_SECONDS` | `120` | Time on each paper page |

@@ -16,6 +16,7 @@ from kindle_dash.calendar_feed import CalendarError, CalendarFeed, Day
 from kindle_dash.chart import label_hours, temperature_svg
 from kindle_dash.feed import latest, load_feed
 from kindle_dash.homeassistant import HomeAssistant, HomeAssistantError, Light
+from kindle_dash.kindle import KindleError, bedtime
 from kindle_dash.paper import Paper, load_paper
 from kindle_dash.settings import Settings
 from kindle_dash.tfl import Disruption, TflError, TubeStatus
@@ -131,11 +132,12 @@ async def index() -> RedirectResponse:
 
 
 @app.get("/home", response_class=HTMLResponse)
-async def home(request: Request) -> HTMLResponse:
+async def home(request: Request, kindle_failed: bool = False) -> HTMLResponse:
     if ha is None:
         return render(request, "home", lights=[], error="Home Assistant token not set.")
+    kindle_error = "The Kindle didn't go to sleep." if kindle_failed else None
     try:
-        return render(request, "home", lights=await ha.lights(), error=None)
+        return render(request, "home", lights=await ha.lights(), error=kindle_error)
     except HomeAssistantError as e:
         log.warning("home: %s", e)
         return render(request, "home", lights=[], error="Can't reach Home Assistant.")
@@ -158,6 +160,21 @@ async def all_lights(state: Literal["on", "off"] = Form()) -> RedirectResponse:
             await ha.set_all_and_wait(state == "on")
         except HomeAssistantError as e:
             log.warning("all lights: %s", e)
+    return RedirectResponse("/home", status_code=303)
+
+
+@app.post("/goodnight")
+async def goodnight() -> RedirectResponse:
+    if ha is not None:
+        try:
+            await ha.set_all_and_wait(False)
+        except HomeAssistantError as e:
+            log.warning("good night/lights: %s", e)
+    try:
+        await bedtime(settings.kindle_ssh_host)
+    except KindleError as e:
+        log.warning("good night/kindle: %s", e)
+        return RedirectResponse("/home?kindle_failed=true", status_code=303)
     return RedirectResponse("/home", status_code=303)
 
 
